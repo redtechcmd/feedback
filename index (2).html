@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Holistic Feedback Generator</title>
+<style>
+  :root {
+    --accent: #0a84ff;
+    --accent-dark: #0060d1;
+    --accent-soft: rgba(10,132,255,0.1);
+    --violet: #af52de;
+    --green: #27ae60;
+    --ink: #1d1d1f;
+    --muted: #6e6e73;
+    --faint: #a1a1a6;
+    --hairline: rgba(0,0,0,0.07);
+    --surface: rgba(255,255,255,0.68);
+    --surface-well: rgba(118,118,128,0.055);
+    --radius-lg: 1.35rem;
+    --radius-md: 0.85rem;
+    --radius-sm: 0.55rem;
+    --ease: cubic-bezier(.22,.9,.32,1);
+  }
+  html, body { height: 100%; }
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; box-sizing: border-box; }
+  ::selection { background: rgba(10,132,255,0.22); }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.14); border-radius: 10px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.24); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                 "Inter", "Helvetica Neue", Arial, sans-serif;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(120, 170, 255, 0.20), transparent 42%),
+      radial-gradient(circle at 88% 14%, rgba(175, 82, 222, 0.10), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(180, 140, 255, 0.15), transparent 45%),
+      linear-gradient(180deg, #f6f6f8 0%, #eceef1 100%);
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9rem;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    overflow: hidden;
+  }
+  .main-container {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1rem;
+    max-width: 1320px;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+  }
+  .panel {
+    background: var(--surface);
+    backdrop-filter: saturate(190%) blur(24px);
+    -webkit-backdrop-filter: saturate(190%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.03), 0 24px 48px -20px rgba(20,20,30,0.20), inset 0 1px 0 rgba(255,255,255,0.5);
+    padding: 1.05rem 1.25rem;
+    flex: 1;
+    min-width: 300px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: panelIn 0.5s var(--ease) both;
+  }
+  .panel:nth-child(2) { animation-delay: 0.06s; }
+  .output-panel { display: flex; flex-direction: column; position: relative; }
+  h1, h2 {
+    font-weight: 650;
+    text-align: center;
+    color: var(--ink);
+    margin: 0 0 0.15rem;
+    letter-spacing: -0.025em;
+  }
+  h1 {
+    font-size: 1.12rem;
+    background: linear-gradient(100deg, var(--ink) 35%, var(--accent-dark) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h2 { font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+  h2::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .subtitle { text-align: center; font-size: 0.68rem; color: var(--muted); margin: 0 0 0.65rem; }
+  form { display: flex; flex-direction: column; gap: 0.45rem; flex: 1; min-height: 0; overflow-y: auto; padding-right: 0.2rem; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+  label { display: block; font-size: 0.62rem; font-weight: 600; color: var(--muted); margin-bottom: 0.12rem; text-transform: uppercase; letter-spacing: 0.035em; }
+  input[type="text"], select {
+    width: 100%; padding: 0.4rem 0.55rem;
+    border: 1px solid var(--hairline); background: var(--surface-well);
+    border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--ink);
+    font-family: inherit; transition: box-shadow 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease);
+  }
+  select { cursor: pointer; }
+  input[type="text"]::placeholder { color: var(--faint); }
+  input[type="text"]:hover, select:hover { background: rgba(118,118,128,0.09); }
+  input[type="text"]:focus, select:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+    background: #fff;
+  }
+  .trait-super-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.8rem; margin-top: 0.25rem; }
+  .trait-group {
+    background: var(--surface-well);
+    border: 1px solid rgba(0,0,0,0.045);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.5rem 0.2rem;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  .trait-group:hover { background: rgba(118,118,128,0.085); border-color: rgba(0,0,0,0.07); }
+  .trait-group-title {
+    font-size: 0.56rem; font-weight: 750; color: var(--accent-dark); text-transform: uppercase;
+    letter-spacing: 0.045em; margin-bottom: 0.2rem; padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(10,132,255,0.12);
+  }
+  .slider-container { position: relative; margin: 0.16rem 0; }
+  .slider-label { font-size: 0.66rem; font-weight: 590; color: var(--ink); margin-bottom: 0.08rem; display: flex; justify-content: space-between; letter-spacing: -0.01em; }
+  .slider-label .tag {
+    font-size: 0.56rem; font-weight: 700; color: var(--accent-dark); background: var(--accent-soft);
+    padding: 0.03rem 0.4rem; border-radius: 0.4rem; white-space: nowrap; transition: background 0.15s, color 0.15s;
+  }
+  .slider-value {
+    position: absolute; top: -1.2rem; left: 50%; transform: translateX(-50%) scale(0.9);
+    background: var(--ink); color: #fff; padding: 0.1rem 0.42rem; border-radius: 0.4rem;
+    font-size: 0.62rem; font-weight: 600; opacity: 0; transition: opacity 0.15s var(--ease), transform 0.15s var(--ease); white-space: nowrap;
+    pointer-events: none;
+  }
+  input[type="range"]:hover + .slider-value, input[type="range"]:focus + .slider-value { opacity: 1; transform: translateX(-50%) scale(1); }
+  .tick-marks { display: flex; justify-content: space-between; margin-top: 0.04rem; font-size: 0.48rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--fill, 50%), rgba(118,118,128,0.16) var(--fill, 50%));
+    border-radius: 4px; outline: none; transition: box-shadow 0.15s; margin: 0.25rem 0 0.05rem;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 15px; height: 15px; background: #ffffff;
+    border-radius: 50%; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.05);
+    border: none; margin-top: -5.5px; transition: box-shadow 0.15s var(--ease), transform 0.1s var(--ease);
+  }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(118,118,128,0.16); }
+  input[type="range"]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--accent); }
+  input[type="range"]::-moz-range-thumb {
+    width: 15px; height: 15px; background: #fff; border: none;
+    border-radius: 50%; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb,
+  input[type="range"]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(10,132,255,0.22); }
+  .btn-row { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 0.55rem; flex-shrink: 0; }
+  button {
+    cursor: pointer; border: none; font-size: 0.78rem; font-weight: 600;
+    padding: 0.55rem 0.85rem; border-radius: var(--radius-sm); transition: transform 0.12s var(--ease), background 0.15s var(--ease), box-shadow 0.15s var(--ease), filter 0.15s;
+    font-family: inherit; letter-spacing: -0.01em;
+  }
+  button:active { transform: scale(0.965); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { flex: 1; min-width: 130px; background: linear-gradient(180deg, #1c93ff, var(--accent)); color: white; box-shadow: 0 3px 10px -3px rgba(10,132,255,0.55); }
+  .btn-primary:hover { filter: brightness(1.05); box-shadow: 0 4px 14px -3px rgba(10,132,255,0.6); }
+  .btn-secondary { flex: 1; min-width: 90px; background: rgba(118,118,128,0.12); color: var(--ink); }
+  .btn-secondary:hover { background: rgba(118,118,128,0.2); }
+  .btn-regenerate { background: linear-gradient(180deg, #bd63e8, var(--violet)); color: white; box-shadow: 0 3px 10px -3px rgba(175,82,222,0.5); }
+  .btn-regenerate:hover { filter: brightness(1.05); }
+  .btn-copy { background: linear-gradient(180deg, #34c368, var(--green)); color: white; box-shadow: 0 3px 10px -3px rgba(39,174,96,0.5); }
+  .btn-copy:hover { filter: brightness(1.05); }
+  .output-text {
+    animation: fadeIn 0.45s var(--ease);
+    margin-top: 0.3rem;
+    padding: 0.9rem 1rem;
+    background: linear-gradient(180deg, rgba(10,132,255,0.055), rgba(175,82,222,0.035));
+    border: 1px solid rgba(10,132,255,0.13);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    flex: 1;
+    min-height: 0;
+    line-height: 1.55;
+    font-size: 0.84rem;
+    overflow-y: auto;
+  }
+  .output-text p { margin: 0 0 0.65rem; }
+  .output-text p:last-child { margin-bottom: 0; }
+  .output-text strong { color: var(--accent-dark); font-weight: 600; }
+  .hidden { display: none; }
+  .placeholder-hint {
+    color: var(--faint); font-size: 0.75rem; text-align: center; margin: auto 0;
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  }
+  .placeholder-hint::before {
+    content: "✦"; font-size: 1.1rem; color: var(--accent); opacity: 0.55;
+  }
+  .word-count { text-align: right; font-size: 0.64rem; color: var(--faint); margin-top: 0.35rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  @media (max-width: 860px) {
+    body { height: auto; min-height: 100vh; overflow-y: auto; align-items: flex-start; padding: 0.7rem; }
+    .main-container { flex-direction: column; height: auto; max-height: none; }
+    .panel { height: auto; min-height: 0; }
+    form { overflow-y: visible; }
+    .output-text { max-height: 50vh; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="main-container">
+    <div class="panel">
+      <h1>Holistic Feedback Generator</h1>
+      <p class="subtitle">Natural, teacher-voiced report card comments across four core dimensions</p>
+      <form id="feedbackForm">
+        <div class="row-2">
+          <div>
+            <label for="name">Student Name</label>
+            <input type="text" id="name" required />
+          </div>
+          <div>
+            <label for="pronoun">Pronoun</label>
+            <select id="pronoun">
+              <option value="She">She/Her</option>
+              <option value="He">He/Him</option>
+              <option value="They">They/Them</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" placeholder="e.g., Mathematics, History, Art" required />
+          </div>
+          <div>
+            <label for="gradeBand">Grade Band</label>
+            <select id="gradeBand">
+              <option value="early">Early Years (K-2)</option>
+              <option value="elementary" selected>Elementary (3-5)</option>
+              <option value="middle">Middle School (6-8)</option>
+              <option value="high">High School (9-12)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row-2">
+          <div>
+            <label for="tone">Tone</label>
+            <select id="tone">
+              <option value="warm" selected>Warm &amp; Encouraging</option>
+              <option value="balanced">Balanced &amp; Professional</option>
+              <option value="formal">Formal &amp; Reserved</option>
+            </select>
+          </div>
+          <div>
+            <label for="length">Length</label>
+            <select id="length">
+              <option value="concise">Concise (1 paragraph)</option>
+              <option value="standard" selected>Standard (2 paragraphs)</option>
+              <option value="detailed">Detailed (4 paragraphs)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="trait-super-grid">
+          <div class="trait-group">
+            <div class="trait-group-title">Academic Performance</div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Concept Mastery</span><span class="tag" id="slider1-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider1" />
+              <span class="slider-value" id="slider1-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Problem-Solving &amp; Accuracy</span><span class="tag" id="slider2-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider2" />
+              <span class="slider-value" id="slider2-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="trait-group">
+            <div class="trait-group-title">Understanding &amp; Learning</div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Comprehension &amp; Critical Thinking</span><span class="tag" id="slider3-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider3" />
+              <span class="slider-value" id="slider3-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Curiosity &amp; Application</span><span class="tag" id="slider4-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider4" />
+              <span class="slider-value" id="slider4-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="trait-group">
+            <div class="trait-group-title">Work Habits</div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Consistency &amp; Independence</span><span class="tag" id="slider5-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider5" />
+              <span class="slider-value" id="slider5-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Organization &amp; Punctuality</span><span class="tag" id="slider6-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider6" />
+              <span class="slider-value" id="slider6-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+          </div>
+
+          <div class="trait-group">
+            <div class="trait-group-title">Classroom Attitude &amp; Behavior</div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Participation &amp; Engagement</span><span class="tag" id="slider7-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider7" />
+              <span class="slider-value" id="slider7-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+            <div class="slider-container">
+              <label class="slider-label"><span>Respect &amp; Teamwork</span><span class="tag" id="slider8-tag"></span></label>
+              <input type="range" min="1" max="10" value="6" id="slider8" />
+              <span class="slider-value" id="slider8-value">6</span>
+              <div class="tick-marks"><span>1</span><span>10</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn-primary">Generate Feedback</button>
+          <button type="button" id="resetBtn" class="btn-secondary">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel output-panel">
+      <h2>Generated Feedback</h2>
+      <div id="feedbackOutput" class="output-text hidden"></div>
+      <p id="placeholderHint" class="placeholder-hint">Fill in the details and adjust the sliders to generate feedback.</p>
+      <div id="wordCount" class="word-count hidden"></div>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.6rem;">
+        <button id="regenerateBtn" class="btn-copy btn-regenerate hidden" style="flex:1;">Rephrase</button>
+        <button id="copyBtn" class="btn-copy hidden" style="flex:1;">Copy Feedback</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// =========================================================================
+// FEEDBACK ENGINE
+// Four evaluation dimensions, each scored from two sliders:
+//   Academic Performance        -> mastery, problemSolving
+//   Understanding & Learning    -> comprehension, application
+//   Work Habits                 -> consistency, organization
+//   Classroom Attitude & Behavior -> participation, respect
+//
+// For each dimension the engine draws from a combinatorial phrase network
+// (opener x descriptor x evidence, per one of five performance tiers) so
+// that consecutive generations for the same score rarely read the same way
+// twice, and nearby scores shade into each other naturally rather than
+// jumping between fixed templates. A separate "Strengths & Appreciation"
+// and "Tips & Suggestions" layer draws on the same score data to produce
+// genuine, specific, non-generic praise and constructive next steps.
+//
+// Two engine-strength additions on top of that foundation:
+//   - Shuffled-bag sampling (see shuffledDraw): every phrase bank is drawn
+//     without replacement until exhausted, then reshuffled, so hitting
+//     "Rephrase" repeatedly cycles through genuinely different wording
+//     instead of relying on flat randomness that can echo itself.
+//   - Grade-band lexicon (see applyGradeLexicon): the same tier logic and
+//     sentence structure is kept for every grade band, but vocabulary is
+//     swapped to match reading level (K-2 plain and concrete, 9-12 more
+//     precise/academic), so the Grade Band selector now actually changes
+//     the output.
+// =========================================================================
+
+const CATS = {
+  academic: {
+    label: "Academic Performance",
+    subs: ["mastery", "problemSolving"],
+    subLabels: { mastery: "concept mastery", problemSolving: "problem-solving and accuracy" }
+  },
+  understanding: {
+    label: "Understanding & Learning",
+    subs: ["comprehension", "application"],
+    subLabels: { comprehension: "comprehension and critical thinking", application: "curiosity and applying ideas independently" }
+  },
+  workHabits: {
+    label: "Work Habits",
+    subs: ["consistency", "organization"],
+    subLabels: { consistency: "consistency and independence", organization: "organization and punctuality" }
+  },
+  attitude: {
+    label: "Classroom Attitude & Behavior",
+    subs: ["participation", "respect"],
+    subLabels: { participation: "participation and engagement", respect: "respect and teamwork" }
+  }
+};
+
+const CAT_LIST = ["academic", "understanding", "workHabits", "attitude"];
+
+const pronounForms = {
+  She: { subject: "She", subjectLower: "she", object: "her", possessive: "her", possessiveCap: "Her", reflexive: "herself" },
+  He: { subject: "He", subjectLower: "he", object: "him", possessive: "his", possessiveCap: "His", reflexive: "himself" },
+  They: { subject: "They", subjectLower: "they", object: "them", possessive: "their", possessiveCap: "Their", reflexive: "themselves" }
+};
+
+// -------------------------------------------------------------------------
+// Observation phrase network: [category][tier] -> { openers, descriptors, evidences }
+// A full sentence = opener + " " + descriptor + evidence + "."
+// Five tiers per category keeps adjacent scores from reading identically.
+// -------------------------------------------------------------------------
+const OBSERVATIONS = {
+  academic: {
+    exceptional: {
+      openers: ["[Name] demonstrates", "[Pronoun] consistently shows", "In [Subject], [Name] shows"],
+      descriptors: ["an exceptional command of core concepts", "outstanding mastery of the material", "a remarkably deep and accurate understanding of the content"],
+      evidences: [", solving multi-step problems with real precision and confidence", ", applying [pronoun]'s knowledge accurately across a wide range of tasks", ", and rarely produces work with more than a stray careless error"]
+    },
+    strong: {
+      openers: ["[Name] shows", "[Pronoun] demonstrates", "In [Subject], [Name] has"],
+      descriptors: ["a solid command of core concepts", "strong subject knowledge", "a dependable grasp of the material"],
+      evidences: [", applying [pronoun]'s knowledge accurately in most tasks", ", working through problems with good accuracy", ", and rarely needs concepts re-explained"]
+    },
+    solid: {
+      openers: ["[Name] has", "[Pronoun] shows", "In [Subject], [Name] demonstrates"],
+      descriptors: ["a fair grasp of core concepts", "a reasonably solid command of the material", "a working understanding of most topics covered"],
+      evidences: [", though accuracy can dip on more complex problems", ", with results that vary somewhat depending on the topic", ", and this continues to strengthen with regular practice"]
+    },
+    developing: {
+      openers: ["[Name] is steadily building", "[Pronoun] is working on strengthening", "In [Subject], [Name] is developing"],
+      descriptors: ["a firmer grasp of core concepts", "more consistent accuracy", "confidence in applying [pronoun]'s knowledge"],
+      evidences: [", and continued practice should help this click into place", ", especially on problems that involve several steps", ", with real progress already showing"]
+    },
+    needs_support: {
+      openers: ["[Name] needs continued support with", "[Pronoun] would benefit from focused help with", "Now is a good time for [Name] to revisit"],
+      descriptors: ["core concepts in [Subject]", "the fundamentals that [Subject] builds on", "basic accuracy and problem-solving strategies"],
+      evidences: [", since repeated practice with the basics will make the biggest difference", ", as small, steady wins here will build real momentum", ", and building consistency here now will pay off later"]
+    }
+  },
+  understanding: {
+    exceptional: {
+      openers: ["[Name] shows", "[Pronoun] brings", "In [Subject], [Name] demonstrates"],
+      descriptors: ["genuinely deep comprehension paired with sharp critical thinking", "an impressive ability to apply ideas in new and unfamiliar situations", "a rare curiosity that pushes [pronoun]'s learning well beyond the syllabus"],
+      evidences: [", often making connections that go beyond what's been directly taught", ", and asks the kind of questions that move class discussion forward", ", which shows up in how quickly [pronounSubj] transfers ideas to new problems"]
+    },
+    strong: {
+      openers: ["[Name] shows", "[Pronoun] demonstrates", "In [Subject], [Name] has"],
+      descriptors: ["good comprehension and solid critical thinking", "a genuine curiosity about the material", "a clear ability to apply what [pronounSubj] has learned"],
+      evidences: [", engaging thoughtfully with new ideas as they're introduced", ", and asks good questions that show real engagement", ", making steady links between topics"]
+    },
+    solid: {
+      openers: ["[Name] shows", "[Pronoun] is developing", "In [Subject], [Name] demonstrates"],
+      descriptors: ["reasonable comprehension of most material", "growing critical thinking skills", "an emerging ability to apply ideas independently"],
+      evidences: [", though [pronounSubj] engages more fully when prompted", ", with understanding that is generally solid but not always consistent", ", and curiosity that shows up in bursts rather than daily"]
+    },
+    developing: {
+      openers: ["[Name] is building", "[Pronoun] is working on developing", "In [Subject], [Name] is growing"],
+      descriptors: ["a clearer understanding of the material", "confidence applying ideas without step-by-step guidance", "curiosity about topics beyond what's assigned"],
+      evidences: [", and benefits from connecting new ideas to what [pronounSubj] already knows", ", particularly when concepts build on one another", ", with encouragement helping this along nicely"]
+    },
+    needs_support: {
+      openers: ["[Name] needs continued support to build", "[Pronoun] would benefit from more practice with", "Now is a good time to strengthen [pronoun]'s"],
+      descriptors: ["basic comprehension of new material", "the confidence to apply ideas independently", "engagement with [Subject] beyond the minimum requirement"],
+      evidences: [", since concepts are often not yet sticking after the first explanation", ", as independent application is still an early-stage skill", ", and finding a personal connection to the material would help a great deal"]
+    }
+  },
+  workHabits: {
+    exceptional: {
+      openers: ["[Name] manages", "[Pronoun] handles", "In [Subject], [Name] takes"],
+      descriptors: ["[pronoun]'s work with exceptional consistency and independence", "assignments with outstanding organization, rarely needing a reminder", "full ownership of [pronoun]'s learning, from planning to follow-through"],
+      evidences: [", completing work on time and to a high standard without prompting", ", and [pronoun]'s materials and deadlines are always in order", ", which makes [pronoun] someone a teacher never has to chase"]
+    },
+    strong: {
+      openers: ["[Name] completes", "[Pronoun] manages", "In [Subject], [Name] shows"],
+      descriptors: ["assignments consistently and on time", "[pronoun]'s workload with good independence", "reliable effort and reasonably good organization"],
+      evidences: [", needing only occasional reminders", ", and generally stays on top of deadlines", ", which makes [pronoun] a dependable member of the class"]
+    },
+    solid: {
+      openers: ["[Name] completes", "[Pronoun] manages", "In [Subject], [Name] shows"],
+      descriptors: ["most assignments, though organization isn't always consistent", "[pronoun]'s work with reasonable consistency", "effort that is generally there but not always steady"],
+      evidences: [", and occasionally needs a reminder to stay on track", ", with punctuality that varies from week to week", ", and would benefit from a more consistent routine"]
+    },
+    developing: {
+      openers: ["[Name] is working on completing", "[Pronoun] is building more consistent", "In [Subject], [Name] is developing"],
+      descriptors: ["assignments more independently", "work habits, particularly around organization", "a steadier routine for getting work done on time"],
+      evidences: [", and currently needs regular reminders to stay on track", ", with completion that is still inconsistent week to week", ", though real effort is there once [pronounSubj] gets started"]
+    },
+    needs_support: {
+      openers: ["[Name] needs consistent support to complete", "Building a reliable routine for", "[Pronoun] currently requires regular reminders to finish"],
+      descriptors: ["assignments on time", "[Subject] homework and classwork", "work that is often incomplete or submitted late"],
+      evidences: [", and a structured routine at home and in class would help enormously", ", since organization and follow-through are the main areas to prioritize", ", so a simple checklist or planner may help build consistency"]
+    }
+  },
+  attitude: {
+    exceptional: {
+      openers: ["[Name] brings", "[Pronoun] shows", "In [Subject], [Name] demonstrates"],
+      descriptors: ["outstanding participation paired with genuine respect for others", "exemplary teamwork and a consistently positive presence in class", "real confidence, attentiveness, and care for [pronoun]'s classmates"],
+      evidences: [", regularly lifting the tone of group work and discussion", ", and peers clearly value having [pronoun] as a partner", ", which makes [Subject] class a better place for everyone"]
+    },
+    strong: {
+      openers: ["[Name] participates", "[Pronoun] shows", "In [Subject], [Name] demonstrates"],
+      descriptors: ["actively and treats classmates with consistent respect", "good cooperation and a generally confident classroom presence", "solid attentiveness and dependable conduct"],
+      evidences: [", contributing positively to group work", ", and is easy to pair with on collaborative tasks", ", which peers and teachers alike appreciate"]
+    },
+    solid: {
+      openers: ["[Name] participates", "[Pronoun] shows", "In [Subject], [Name] demonstrates"],
+      descriptors: ["reasonably well, though participation is more consistent on some days than others", "generally good cooperation with occasional lapses in focus", "a fair level of confidence that is still growing"],
+      evidences: [", and engages more fully when directly invited to contribute", ", with attentiveness that could be more consistent", ", especially during longer or more open-ended tasks"]
+    },
+    developing: {
+      openers: ["[Name] is building", "[Pronoun] is working on developing", "In [Subject], [Name] is growing"],
+      descriptors: ["more consistent participation and focus", "the confidence to contribute without being asked directly", "stronger teamwork habits during group tasks"],
+      evidences: [", and responds well to encouragement to speak up", ", particularly in smaller, lower-pressure settings", ", with real progress already visible this term"]
+    },
+    needs_support: {
+      openers: ["[Name] needs continued encouragement to build", "Now is an important time to develop", "[Pronoun] would benefit from more support around"],
+      descriptors: ["consistent participation and attentiveness", "respectful, cooperative habits during group work", "the confidence to engage more fully in class"],
+      evidences: [", since [pronounSubj] currently engages mainly when directly prompted", ", as this affects both [pronoun]'s learning and the group's dynamic", ", and small, low-pressure opportunities to contribute would help"]
+    }
+  }
+};
+
+// When the two sliders inside one category diverge sharply, add a nuance
+// clause naming both the strength and the growth edge specifically.
+const NUANCE_TEMPLATES = [
+  "[Pronoun] is particularly strong in {strong}, while {weak} is still catching up.",
+  "The gap between [pronoun]'s {strong} and {weak} is worth noting \u2014 the former is a clear strength, the latter a growth area.",
+  "[Name] leans heavily on strength in {strong}; bringing {weak} up to the same level is the natural next step.",
+  "It's [pronoun]'s {strong} that stands out most, with {weak} representing real room to grow."
+];
+
+const APPRECIATION_QUALITIES = {
+  academic: ["command of core concepts", "accuracy and problem-solving ability", "depth of subject knowledge", "steady academic growth this term"],
+  understanding: ["critical thinking and comprehension", "curiosity and eagerness to learn", "ability to apply ideas in new situations", "genuine intellectual engagement"],
+  workHabits: ["consistency and reliability", "independence and organization", "work ethic and follow-through", "dependability with assignments"],
+  attitude: ["respect and cooperation with classmates", "positive presence in the classroom", "teamwork and participation", "confidence and maturity"]
+};
+
+const CLOSING_APPRECIATION = [
+  "That kind of quality doesn't happen by accident, and it deserves real recognition.",
+  "It's the sort of strength that will serve [pronoun] well far beyond this class.",
+  "Moments like these are exactly what make teaching genuinely rewarding.",
+  "It's a genuine pleasure to see this reflected consistently in [pronoun]'s work."
+];
+
+const RECOMMENDATIONS = {
+  academic: [
+    "revisiting one tricky concept each week until it feels solid, rather than moving straight past it",
+    "showing full working on problems, since that often reveals exactly where a mix-up starts",
+    "using worked examples as a model before attempting similar problems independently",
+    "asking for a fuller explanation the moment something feels unclear, rather than after the fact",
+    "reviewing corrected work carefully to understand not just what was wrong, but why"
+  ],
+  understanding: [
+    "connecting new [Subject] ideas to something that already interests or motivates [pronoun]",
+    "pausing after each new concept to explain it back in [pronoun]'s own words",
+    "asking at least one question per lesson, even a small one",
+    "exploring how a [Subject] idea shows up outside the classroom",
+    "practicing applying a concept to an unfamiliar problem, not just a familiar one"
+  ],
+  workHabits: [
+    "using a simple checklist or planner to track [Subject] assignments and deadlines",
+    "setting aside a consistent time and place for [Subject] work each day",
+    "breaking larger [Subject] tasks into smaller steps with their own mini-deadlines",
+    "doing a quick end-of-day check to make sure nothing has been missed",
+    "starting assignments the day they're given, even if just for a few minutes"
+  ],
+  attitude: [
+    "practicing one small contribution per lesson, even a brief comment",
+    "checking in with quieter group members during [Subject] collaborative work",
+    "taking a breath before reacting when a discussion doesn't go [pronoun]'s way",
+    "volunteering for a small role in group tasks to build confidence gradually",
+    "reflecting after class on one moment where [pronounSubj] could have engaged a bit more"
+  ]
+};
+
+// For students already excelling in an area, growth tips should read as
+// stretch goals rather than remediation, so contradictions never appear.
+const STRETCH_RECOMMENDATIONS = {
+  academic: [
+    "taking on more open-ended or above-grade-level challenges when ready",
+    "mentoring a peer on a concept [pronounSubj] has mastered, which deepens understanding further"
+  ],
+  understanding: [
+    "pursuing an independent mini-project on a [Subject] topic that genuinely interests [pronoun]",
+    "digging into the 'why' behind a concept [pronounSubj] already applies well"
+  ],
+  workHabits: [
+    "helping set the pace for group deadlines, since [pronoun]'s organization is already a model for others",
+    "taking on a slightly more ambitious workload now that the basics are so well handled"
+  ],
+  attitude: [
+    "taking on more of a leadership role during group work",
+    "helping bring quieter classmates into the conversation, building on [pronoun]'s own strong participation"
+  ]
+};
+
+const CONNECTORS = {
+  and: ["Additionally, ", "Furthermore, ", "In addition, ", "Beyond this, ", "At the same time, ", "Alongside this, "],
+  but: ["That said, ", "At the same time, ", "On the other hand, ", "Meanwhile, ", "Alongside these strengths, "],
+  encouragement: [
+    "we encourage [Name] to focus on ",
+    "it would help for [Name] to consider ",
+    "[Name] can improve further by ",
+    "a useful strategy for [Name] would be ",
+    "we'd recommend [Name] try ",
+    "supporting [pronoun]'s learning further, [Name] should try "
+  ]
+};
+
+const OVERALL_INTRO = {
+  natural: {
+    high: [
+      "It's genuinely inspiring to reflect on [Name]'s progress in [Subject] this period.",
+      "As we look back at [Name]'s engagement with [Subject], [pronoun]'s outstanding progress stands out.",
+      "[Name] has excelled in [Subject] this term, showing remarkable dedication throughout.",
+      "This term, [Name]'s performance in [Subject] has been consistently exemplary.",
+      "Watching [Name] work through [Subject] this period has been a real highlight.",
+      "There's a lot to celebrate in how [Name] has approached [Subject] this term.",
+      "[Name] has set a high bar in [Subject] this period, and it shows."
+    ],
+    medium: [
+      "Reflecting on [Name]'s progress in [Subject] this term, we've seen real growth.",
+      "This period, [Name] has been building solid foundations in [Subject] through consistent effort.",
+      "We've seen [Name] engage thoughtfully with [Subject], making steady strides along the way.",
+      "[Name] has shown commendable dedication to [Subject] throughout this period.",
+      "It's clear [Name] is developing a stronger grasp of [Subject].",
+      "[Name]'s work in [Subject] this term reflects steady, honest progress.",
+      "There's a good rhythm to [Name]'s engagement with [Subject] this period."
+    ],
+    low: [
+      "Considering [Name]'s work in [Subject] this period, there are clear opportunities ahead.",
+      "As [Name] continues to develop in [Subject], a few focused changes will help a great deal.",
+      "This term in [Subject] presents a real chance for [Name] to build stronger habits.",
+      "[Name] is encouraged to try some new approaches to [pronoun]'s work in [Subject].",
+      "For [Name] to move forward in [Subject], a renewed focus on the basics will help.",
+      "[Name]'s [Subject] work this period points to a few areas worth extra attention.",
+      "With some targeted support, [Name] has a lot of room to grow in [Subject] this term."
+    ]
+  },
+  formal: {
+    high: [
+      "This report reflects a period of consistently strong performance by [Name] in [Subject].",
+      "[Name]'s performance in [Subject] this term has been of a consistently high standard.",
+      "The following observations reflect [Name]'s strong overall performance in [Subject] this period."
+    ],
+    medium: [
+      "This report reflects steady, developing progress by [Name] in [Subject] this term.",
+      "[Name]'s performance in [Subject] this period shows a pattern of consistent, gradual improvement.",
+      "The following observations outline [Name]'s progress in [Subject] over the current period."
+    ],
+    low: [
+      "This report identifies several areas requiring continued attention in [Name]'s [Subject] performance.",
+      "[Name]'s performance in [Subject] this period indicates a need for focused improvement in specific areas.",
+      "The following observations outline key areas for development in [Name]'s [Subject] work."
+    ]
+  }
+};
+
+const OVERALL_CONCLUSION = {
+  natural: {
+    high: [
+      "With [pronoun]'s evident talent and steady dedication, [Name] is well positioned for continued success in [Subject].",
+      "[Name]'s contributions to [Subject] have been genuinely valuable, and we look forward to what comes next.",
+      "It has been a pleasure to see [Name]'s growth in [Subject] this term.",
+      "Keep it up, [Name] \u2014 [pronoun]'s work in [Subject] is genuinely inspiring to see.",
+      "[Name]'s progress in [Subject] sets a strong example for peers this term."
+    ],
+    medium: [
+      "As [Name] continues applying [pronoun]'s effort, [pronounSubj] will keep reaching new milestones in [Subject].",
+      "[Name]'s steady hard work and positive attitude are a strong foundation for continued progress in [Subject].",
+      "We look forward to seeing [Name]'s understanding deepen further in [Subject].",
+      "The dedication [Name] shows in [Subject] sets [pronoun] up well for continued progress.",
+      "With sustained focus, [Name] is on track to grow further in [Subject]."
+    ],
+    low: [
+      "With focused effort and continued practice, [Name] has a real opportunity to build confidence in [Subject].",
+      "We're committed to supporting [Name] in strengthening these [Subject] skills going forward.",
+      "Treating challenges in [Subject] as learning opportunities will help [Name]'s growth over time.",
+      "By engaging with these strategies, [Name] can make real progress in [Subject].",
+      "Consistent effort with these strategies will help [Name] move forward in [Subject]."
+    ]
+  },
+  formal: {
+    high: [
+      "[Name] is encouraged to maintain this standard of performance going forward.",
+      "This level of performance provides a strong foundation for continued achievement in [Subject].",
+      "[Name] is commended for this standard of work and encouraged to sustain it."
+    ],
+    medium: [
+      "Continued application of effort is expected to yield further improvement in [Subject].",
+      "[Name] is encouraged to build on this progress in the coming term.",
+      "With continued effort, further development in [Subject] is anticipated."
+    ],
+    low: [
+      "Focused attention on the areas identified above will support meaningful improvement.",
+      "Continued support and consistent effort are recommended to address these areas.",
+      "With targeted effort, meaningful progress in these areas is achievable."
+    ]
+  }
+};
+
+const APPRECIATION_OPENERS = {
+  natural: [
+    "One of the most rewarding things to see this term is",
+    "It's genuinely heartening to see",
+    "Something well worth highlighting is",
+    "It's a pleasure to note"
+  ],
+  formal: [
+    "A notable strength observed this term is",
+    "It is worth commending",
+    "A particular strength to acknowledge is"
+  ]
+};
+
+const TIPS_INTRO = {
+  natural: [
+    "Looking ahead, a few focused adjustments could make a real difference.",
+    "Here's where continued attention would help most.",
+    "For continued growth, here's what I'd suggest next."
+  ],
+  formal: [
+    "The following areas are recommended for continued focus.",
+    "Going forward, attention to the following would be beneficial.",
+    "For continued development, the following steps are suggested."
+  ]
+};
+
+function styleOf(tone) {
+  return tone === "formal" ? "formal" : "natural";
+}
+
+// -------------------------------------------------------------------------
+// Grade-band register: swaps vocabulary so the same underlying score reads
+// at a level appropriate to the student's age, without touching sentence
+// structure or the scoring logic itself.
+//   early (K-2)      -> plain, concrete, warmer words
+//   elementary/middle -> the phrase banks as written (no change)
+//   high (9-12)       -> slightly more precise/academic register
+// -------------------------------------------------------------------------
+const GRADE_LEXICON = {
+  early: {
+    "demonstrates": "shows", "exceptional": "wonderful", "outstanding": "excellent",
+    "remarkably": "really", "consistently": "almost always", "independently": "on their own",
+    "comprehension": "understanding", "articulates": "explains", "exemplary": "excellent",
+    "dependable": "reliable", "diligent": "hard-working", "genuinely": "truly",
+    "fundamentals": "basics", "proficiency": "skill", "endeavors": "efforts",
+    "collaborates": "works well with others", "accuracy": "getting things right",
+    "capacity": "ability"
+  },
+  high: {
+    "good": "commendable", "shows": "exhibits", "grasp": "command", "basic": "foundational",
+    "helps a great deal": "meaningfully supports growth", "gets": "achieves",
+    "keeps": "maintains", "checks in": "follows up", "figures out": "resolves"
+  }
+};
+
+function applyGradeLexicon(text, gradeBand) {
+  const map = GRADE_LEXICON[gradeBand];
+  if (!map) return text;
+  let out = text;
+  Object.entries(map).forEach(([from, to]) => {
+    // Negative lookahead guards phrasal verbs (e.g. "shows up") from being
+    // broken into non-idiomatic swaps ("exhibits up").
+    const re = new RegExp(`\\b${from}\\b(?!\\s+(up|out|off|in))`, "gi");
+    out = out.replace(re, (match) => {
+      if (match[0] === match[0].toUpperCase() && match[0] !== match[0].toLowerCase()) {
+        return to.charAt(0).toUpperCase() + to.slice(1);
+      }
+      return to;
+    });
+  });
+  return out;
+}
+
+// Shuffled-bag sampler: each phrase bank draws without replacement until the
+// bag empties, then reshuffles. This keeps "Rephrase" genuinely varied
+// instead of relying on flat Math.random(), which can repeat a phrase on
+// consecutive regenerations by chance.
+const _phraseBags = new WeakMap();
+
+function shuffledDraw(arr) {
+  let bag = _phraseBags.get(arr);
+  if (!bag || bag.length === 0) {
+    bag = arr.map((_, i) => i);
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    _phraseBags.set(arr, bag);
+  }
+  return arr[bag.pop()];
+}
+
+function getRandomElement(arr, exclude) {
+  if (!arr || arr.length === 0) return "";
+  const pool = exclude ? arr.filter(x => x !== exclude) : arr;
+  const useArr = pool.length ? pool : arr;
+  return useArr.length > 1 ? shuffledDraw(useArr) : useArr[0];
+}
+
+function tierOf(score) {
+  if (score >= 8.5) return "exceptional";
+  if (score >= 6.5) return "strong";
+  if (score >= 4.5) return "solid";
+  if (score >= 2.5) return "developing";
+  return "needs_support";
+}
+
+function tierLabel(score) {
+  if (score >= 9) return "Excellent";
+  if (score >= 7) return "Strong";
+  if (score >= 5) return "Solid";
+  if (score >= 3) return "Developing";
+  return "Needs Support";
+}
+
+const TIER_RANK = { exceptional: 4, strong: 3, solid: 2, developing: 1, needs_support: 0 };
+
+// Converts **bold** markdown into <strong> and escapes any stray HTML first.
+function mdBoldToHtml(text) {
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
+const THEY_VERB_FIXES = {
+  shows: "show", conveys: "convey", handles: "handle", manages: "manage",
+  needs: "need", participates: "participate", struggles: "struggle",
+  exceeds: "exceed", responds: "respond", leans: "lean", is: "are",
+  articulates: "articulate", applies: "apply", maintains: "maintain",
+  displays: "display", possesses: "possess", makes: "make",
+  collaborates: "collaborate", keeps: "keep", shares: "share",
+  tackles: "tackle", bounces: "bounce", holds: "hold", brings: "bring",
+  has: "have", takes: "take", completes: "complete",
+  transfers: "transfer", engages: "engage", knows: "know", gets: "get",
+  requires: "require", exhibits: "exhibit", demonstrates: "demonstrate",
+  excels: "excel", stands: "stand", does: "do"
+};
+
+function fixTheyAgreement(text, pronounKey) {
+  if (pronounKey !== "They") return text;
+  let fixed = text;
+  Object.entries(THEY_VERB_FIXES).forEach(([singular, plural]) => {
+    // Allow a single adverb between the pronoun and verb (e.g. "They
+    // consistently shows" -> "They consistently show"), not just a direct
+    // "They shows" -> "They show".
+    const re = new RegExp(`\\b(They|they)(\\s+\\w+)?\\s+${singular}\\b`, "g");
+    fixed = fixed.replace(re, (m, subj, adverb) => `${subj}${adverb || ""} ${plural}`);
+  });
+  return fixed;
+}
+
+function fillPlaceholders(text, name, subject, p) {
+  return text
+    .replace(/\[Name\]/g, name)
+    .replace(/\[Pronoun\]'s/g, p.possessiveCap)
+    .replace(/\[Pronoun\]/g, p.subject)
+    .replace(/\[pronoun's\]/g, p.possessive)
+    .replace(/\[pronoun\]'s/g, p.possessive)
+    .replace(/\[pronounSubj\]/g, p.subjectLower)
+    .replace(/\[pronoun\]/g, p.object)
+    .replace(/\[pronounself\]/g, p.reflexive)
+    .replace(/\[Subject\]/g, subject);
+}
+
+const ALL_CONNECTORS = new Set([...CONNECTORS.and, ...CONNECTORS.but]);
+
+function lowercaseFirst(text) {
+  if (!text) return text;
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function joinSentences(parts, protectedWord) {
+  const clean = parts.filter(Boolean);
+  const startsWithProtectedWord = (text) => protectedWord && text.startsWith(protectedWord);
+  const adjusted = clean.map((part, i) => {
+    const prev = clean[i - 1];
+    if (prev && ALL_CONNECTORS.has(prev) && !startsWithProtectedWord(part)) return lowercaseFirst(part);
+    return part;
+  });
+  return adjusted
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .replace(/\.\s*\./g, ".")
+    .trim();
+}
+
+function stripArticle(text) {
+  return text.replace(/^(a|an)\s+/i, "");
+}
+
+// -------------------------------------------------------------------------
+// Subject-aware flavor layer.
+//
+// Previously the only thing that varied by subject was the literal [Subject]
+// noun dropped into otherwise identical sentences, so Math and Art feedback
+// read the same shape. This classifies the free-text subject into a small
+// set of curriculum categories, then layers a second, subject-specific
+// sentence onto the academic/understanding observations describing concrete,
+// subject-real activities (solving equations vs. running experiments vs.
+// building a composition), graded by the same tier the score already maps
+// to. Unrecognized/uncommon subjects fall back to the original generic-only
+// behavior, so nothing regresses for edge cases.
+// -------------------------------------------------------------------------
+const SUBJECT_CLASSIFIER = [
+  { category: "computing", pattern: /computer|computing|\bict\b|programming|coding|technology|\bobt\b/i },
+  { category: "math", pattern: /math|algebra|geometry|calculus|arithmetic|statistics|trigonometry/i },
+  { category: "science", pattern: /\bscience\b|biology|chemistry|physics|\bevs\b|environmental/i },
+  { category: "language", pattern: /english|language|literature|reading|writing|nepali|grammar|linguistics|esl/i },
+  { category: "humanities", pattern: /history|social studies|geography|civics|economics|politics|moral education/i },
+  { category: "art", pattern: /\bart\b|drawing|painting|design|craft/i },
+  { category: "music", pattern: /music|choir|band|instrument/i },
+  { category: "pe", pattern: /physical education|\bp\.?e\.?\b|sports|gym|athletics|health|population/i }
+];
+
+function classifySubject(subject) {
+  if (!subject) return "generic";
+  const match = SUBJECT_CLASSIFIER.find(({ pattern }) => pattern.test(subject));
+  return match ? match.category : "generic";
+}
+
+// Concrete, gerund-led activities per subject category. Only academic and
+// understanding are covered, since work habits and classroom attitude are
+// genuinely subject-agnostic and already vary through [Subject] insertion.
+const SUBJECT_ACTIVITIES = {
+  math: {
+    academic: [
+      "solving multi-step equations and word problems",
+      "working confidently with numbers, patterns, and geometric relationships",
+      "translating real-world scenarios into mathematical models",
+      "showing clear, organized working when solving problems"
+    ],
+    understanding: [
+      "explaining the reasoning behind a solution, not just the answer",
+      "recognizing which strategy fits a given type of problem",
+      "connecting new mathematical ideas to concepts learned earlier",
+      "spotting patterns and making generalizations from them"
+    ]
+  },
+  science: {
+    academic: [
+      "designing simple experiments and recording accurate observations",
+      "applying scientific concepts to explain real-world phenomena",
+      "using scientific vocabulary precisely when describing findings",
+      "reading and interpreting data from charts and experiments"
+    ],
+    understanding: [
+      "forming hypotheses and testing them through inquiry",
+      "asking questions that probe cause and effect",
+      "connecting scientific ideas across different topics",
+      "drawing conclusions that are properly supported by evidence"
+    ]
+  },
+  language: {
+    academic: [
+      "constructing clear, well-organized paragraphs",
+      "using vocabulary and grammar accurately in writing",
+      "reading aloud with fluency and expression",
+      "revising written work for clarity and structure"
+    ],
+    understanding: [
+      "interpreting deeper meaning and theme in a text",
+      "making inferences that go beyond the literal words on the page",
+      "expressing ideas persuasively in both writing and discussion",
+      "recognizing how an author's choices shape meaning"
+    ]
+  },
+  humanities: {
+    academic: [
+      "recalling key events, dates, and figures accurately",
+      "analyzing primary sources for evidence and perspective",
+      "constructing well-supported arguments about past events",
+      "comparing causes and consequences across different periods"
+    ],
+    understanding: [
+      "understanding how past events connect to the present",
+      "weighing multiple perspectives on a single event",
+      "evaluating how reliable a source is before using it as evidence",
+      "making connections between local and global contexts"
+    ]
+  },
+  art: {
+    academic: [
+      "developing technical control of tools and materials",
+      "experimenting deliberately with composition, color, and technique",
+      "completing projects with real attention to craftsmanship",
+      "translating an idea into a finished visual piece"
+    ],
+    understanding: [
+      "developing a personal style and creative voice",
+      "reflecting thoughtfully on [pronoun]'s own work and that of others",
+      "taking creative risks rather than playing it safe",
+      "using critique constructively to refine [pronoun]'s work"
+    ]
+  },
+  music: {
+    academic: [
+      "developing technique on [pronoun]'s instrument or voice",
+      "reading notation and keeping consistent rhythm",
+      "performing with increasing confidence and control",
+      "practicing consistently enough to build real skill"
+    ],
+    understanding: [
+      "listening critically and adjusting in response to feedback",
+      "understanding the structure and expression behind a piece",
+      "collaborating musically with others in ensemble settings",
+      "developing a genuine ear for tone and timing"
+    ]
+  },
+  pe: {
+    academic: [
+      "developing coordination, strength, and technique in physical activities",
+      "applying rules and strategy correctly during games and drills",
+      "building fitness and stamina over the course of the term",
+      "performing physical skills with increasing consistency"
+    ],
+    understanding: [
+      "reading the game and making good decisions during play",
+      "recognizing the value of teamwork and fair play",
+      "reflecting on performance to identify specific areas to improve",
+      "applying feedback to adjust technique in the moment"
+    ]
+  },
+  computing: {
+    academic: [
+      "writing and debugging code with increasing independence",
+      "applying logical, step-by-step thinking to solve problems",
+      "using digital tools accurately to complete tasks",
+      "building and testing projects methodically"
+    ],
+    understanding: [
+      "understanding why a piece of logic works, not just copying it",
+      "troubleshooting errors systematically rather than guessing",
+      "applying computational thinking to new, unfamiliar problems",
+      "seeing the connections between coding concepts and real systems"
+    ]
+  }
+};
+
+// Grades the same activity phrase by the score tier, so the subject-specific
+// clause reads as praise, steady competence, or a growth area exactly like
+// the rest of the report, not as a flat add-on.
+const SUBJECT_TIER_WRAPPERS = {
+  exceptional: ["excels at {activity}", "stands out for {activity}", "shows real mastery in {activity}"],
+  strong: ["shows real strength in {activity}", "is dependable at {activity}", "does well at {activity}"],
+  solid: ["is generally capable at {activity}", "shows a reasonable handle on {activity}", "manages {activity} adequately"],
+  developing: ["is building skill at {activity}", "is growing more comfortable with {activity}", "is making steady progress with {activity}"],
+  needs_support: ["needs continued support with {activity}", "would benefit from more practice with {activity}", "is still developing basic skill at {activity}"]
+};
+
+function buildSubjectFlavor(catKey, tier, category, pick) {
+  const activities = SUBJECT_ACTIVITIES[category] && SUBJECT_ACTIVITIES[category][catKey];
+  if (!activities || activities.length === 0) return "";
+  const activity = pick(activities);
+  const wrapper = pick(SUBJECT_TIER_WRAPPERS[tier]);
+  return `[Pronoun] ${wrapper.replace("{activity}", activity)}.`;
+}
+
+function buildObservation(catKey, data, pick, subjectCategory) {
+  const tier = tierOf(data.avg);
+  const bank = OBSERVATIONS[catKey][tier];
+  const opener = pick(bank.openers);
+  const descriptor = pick(bank.descriptors);
+  const evidence = pick(bank.evidences);
+  let sentence = `${opener} ${descriptor}${evidence}.`;
+
+  const [subA, subB] = CATS[catKey].subs;
+  const scoreA = data.subs[subA];
+  const scoreB = data.subs[subB];
+  if (Math.abs(scoreA - scoreB) >= 3) {
+    const strongKey = scoreA > scoreB ? subA : subB;
+    const weakKey = scoreA > scoreB ? subB : subA;
+    const nuance = pick(NUANCE_TEMPLATES)
+      .replace("{strong}", CATS[catKey].subLabels[strongKey])
+      .replace("{weak}", CATS[catKey].subLabels[weakKey]);
+    sentence += " " + nuance;
+  }
+
+  if ((catKey === "academic" || catKey === "understanding") && subjectCategory && subjectCategory !== "generic") {
+    const flavor = buildSubjectFlavor(catKey, tier, subjectCategory, pick);
+    if (flavor) sentence += " " + flavor;
+  }
+  return sentence;
+}
+
+function pickRecommendation(catKey, scores, pick) {
+  const tier = tierOf(scores[catKey]);
+  if (tier === "exceptional" || tier === "strong") return pick(STRETCH_RECOMMENDATIONS[catKey]);
+  return pick(RECOMMENDATIONS[catKey]);
+}
+
+function connectorBetween(catA, catB, scores, pick) {
+  const diff = Math.abs(TIER_RANK[tierOf(scores[catA])] - TIER_RANK[tierOf(scores[catB])]);
+  return diff >= 2 ? pick(CONNECTORS.but) : pick(CONNECTORS.and);
+}
+
+function buildAppreciation(catKey, style, pick) {
+  const opener = pick(APPRECIATION_OPENERS[style]);
+  const quality = pick(APPRECIATION_QUALITIES[catKey]);
+  return `${opener} [Name]'s ${quality}.`;
+}
+
+// -------------------------------------------------------------------------
+// Main generation entry point.
+// -------------------------------------------------------------------------
+function generateFeedback(name, pronoun, subject, sliders, options) {
+  const { length = "standard", tone = "warm", gradeBand = "elementary" } = options || {};
+  const style = styleOf(tone);
+  const subjectCategory = classifySubject(subject);
+  const p = pronounForms[pronoun];
+
+  const catData = {
+    academic: { subs: { mastery: sliders[0], problemSolving: sliders[1] } },
+    understanding: { subs: { comprehension: sliders[2], application: sliders[3] } },
+    workHabits: { subs: { consistency: sliders[4], organization: sliders[5] } },
+    attitude: { subs: { participation: sliders[6], respect: sliders[7] } }
+  };
+  const scores = {};
+  CAT_LIST.forEach(c => {
+    const [a, b] = CATS[c].subs;
+    catData[c].avg = (catData[c].subs[a] + catData[c].subs[b]) / 2;
+    scores[c] = catData[c].avg;
+  });
+
+  const overallAvg = sliders.reduce((a, b) => a + b, 0) / sliders.length;
+  const overallLevel = overallAvg >= 8 ? "high" : overallAvg >= 5 ? "medium" : "low";
+
+  const usedPhrases = new Set();
+  const pick = (arr) => {
+    let phrase = getRandomElement(arr);
+    let attempts = 0;
+    while (usedPhrases.has(phrase) && attempts < 6) {
+      phrase = getRandomElement(arr);
+      attempts++;
+    }
+    usedPhrases.add(phrase);
+    return phrase;
+  };
+
+  const fill = (text) => fixTheyAgreement(fillPlaceholders(text, name, subject, p), pronoun);
+
+  const sortedDesc = [...CAT_LIST].sort((a, b) => scores[b] - scores[a]);
+  const sortedAsc = [...CAT_LIST].sort((a, b) => scores[a] - scores[b]);
+  const topCat = sortedDesc[0];
+  const secondTop = sortedDesc[1];
+  let bottomCat = sortedAsc[0];
+  let secondBottom = sortedAsc[1];
+  if (bottomCat === topCat) { bottomCat = secondBottom; secondBottom = sortedAsc[2]; }
+
+  const introSentence = fill(pick(OVERALL_INTRO[style][overallLevel]));
+  const conclusion = fill(pick(OVERALL_CONCLUSION[style][overallLevel]));
+
+  const academicSentence = fill(buildObservation("academic", catData.academic, pick, subjectCategory));
+  const understandingSentence = fill(buildObservation("understanding", catData.understanding, pick, subjectCategory));
+  const workHabitsSentence = fill(buildObservation("workHabits", catData.workHabits, pick, subjectCategory));
+  const attitudeSentence = fill(buildObservation("attitude", catData.attitude, pick, subjectCategory));
+
+  // Strengths & Appreciation
+  let appreciationSentence = fill(buildAppreciation(topCat, style, pick));
+  if (length !== "concise") {
+    const [subA, subB] = CATS[topCat].subs;
+    const gap = Math.abs(catData[topCat].subs[subA] - catData[topCat].subs[subB]);
+    if (gap >= 3) {
+      const strongKey = catData[topCat].subs[subA] > catData[topCat].subs[subB] ? subA : subB;
+      appreciationSentence = appreciationSentence.replace(/\.$/, `, particularly in ${CATS[topCat].subLabels[strongKey]}.`);
+      appreciationSentence = fill(appreciationSentence);
+    }
+  }
+  if (length === "detailed") {
+    if (Math.abs(scores[topCat] - scores[secondTop]) <= 1) {
+      const secondQuality = pick(APPRECIATION_QUALITIES[secondTop]);
+      appreciationSentence += " " + fill(`[Pronoun]'s ${secondQuality} stands out as well this term.`);
+    }
+    appreciationSentence += " " + fill(pick(CLOSING_APPRECIATION));
+  }
+
+  // Tips & Suggestions
+  const tipsIntro = fill(pick(TIPS_INTRO[style]));
+  const framing = pick(CONNECTORS.encouragement);
+  let tipsBody = framing + pickRecommendation(bottomCat, scores, pick) + ".";
+  if (length !== "concise" && secondBottom) {
+    tipsBody += " " + pick(CONNECTORS.and) + pickRecommendation(secondBottom, scores, pick) + ".";
+  }
+  const tipsSentence = fill(tipsBody);
+
+  let paragraphs;
+
+  if (length === "concise") {
+    const topObs = fill(buildObservation(topCat, catData[topCat], pick, subjectCategory));
+    const bottomObs = fill(buildObservation(bottomCat, catData[bottomCat], pick, subjectCategory));
+    const main = joinSentences([introSentence, topObs, connectorBetween(topCat, bottomCat, scores, pick), bottomObs], name);
+    const shortTip = fill(pick(CONNECTORS.encouragement) + pickRecommendation(bottomCat, scores, pick) + ".");
+    paragraphs = [joinSentences([main, shortTip, conclusion], name)];
+  } else if (length === "detailed") {
+    const para1 = joinSentences([introSentence, academicSentence, connectorBetween("academic", "understanding", scores, pick), understandingSentence], name);
+    const para2 = joinSentences([workHabitsSentence, connectorBetween("workHabits", "attitude", scores, pick), attitudeSentence], name);
+    const para3 = appreciationSentence;
+    const para4 = joinSentences([tipsIntro, tipsSentence, conclusion], name);
+    paragraphs = [para1, para2, para3, para4];
+  } else {
+    // standard
+    const topObs = fill(buildObservation(topCat, catData[topCat], pick, subjectCategory));
+    const bottomObs = fill(buildObservation(bottomCat, catData[bottomCat], pick, subjectCategory));
+    const para1 = joinSentences([introSentence, topObs, connectorBetween(topCat, bottomCat, scores, pick), bottomObs], name);
+    const para2 = joinSentences([appreciationSentence, tipsSentence, conclusion], name);
+    paragraphs = [para1, para2];
+  }
+
+  return paragraphs.map(text => {
+    const adjusted = applyGradeLexicon(text, gradeBand);
+    return adjusted.charAt(0).toUpperCase() + adjusted.slice(1);
+  });
+}
+
+function setSliderFill(slider) {
+  const min = +slider.min || 0;
+  const max = +slider.max || 100;
+  const pct = ((slider.value - min) / (max - min)) * 100;
+  slider.style.setProperty("--fill", `${pct}%`);
+}
+
+function updateSliderTag(id) {
+  const slider = document.getElementById(id);
+  const tag = document.getElementById(`${id}-tag`);
+  if (tag) tag.textContent = tierLabel(+slider.value);
+}
+
+function updateSliderValue(sliderId, valueId) {
+  const slider = document.getElementById(sliderId);
+  const valueSpan = document.getElementById(valueId);
+  setSliderFill(slider);
+  updateSliderTag(sliderId);
+  slider.addEventListener("input", () => {
+    valueSpan.textContent = slider.value;
+    setSliderFill(slider);
+    updateSliderTag(sliderId);
+    updateFeedback();
+  });
+}
+
+const sliderIds = ["slider1", "slider2", "slider3", "slider4", "slider5", "slider6", "slider7", "slider8"];
+
+function normalizeName(raw) {
+  return raw
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w.length > 1 ? w.charAt(0).toUpperCase() + w.slice(1) : w.toUpperCase())
+    .join(" ");
+}
+
+function normalizeSubject(raw) {
+  if (!raw) return raw;
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function currentInputs() {
+  return {
+    name: normalizeName(document.getElementById("name").value.trim()),
+    pronoun: document.getElementById("pronoun").value,
+    subject: normalizeSubject(document.getElementById("subject").value.trim()),
+    length: document.getElementById("length").value,
+    tone: document.getElementById("tone").value,
+    gradeBand: document.getElementById("gradeBand").value,
+    sliders: sliderIds.map(id => +document.getElementById(id).value)
+  };
+}
+
+function renderFeedback(paragraphs) {
+  const output = document.getElementById("feedbackOutput");
+  output.innerHTML = paragraphs.map(p => `<p>${mdBoldToHtml(p)}</p>`).join("");
+  output.classList.remove("hidden");
+  document.getElementById("copyBtn").classList.remove("hidden");
+  document.getElementById("regenerateBtn").classList.remove("hidden");
+  document.getElementById("placeholderHint").classList.add("hidden");
+  const wc = paragraphs.join(" ").split(/\s+/).filter(Boolean).length;
+  const wcEl = document.getElementById("wordCount");
+  wcEl.textContent = `${wc} words`;
+  wcEl.classList.remove("hidden");
+}
+
+function updateFeedback() {
+  const { name, pronoun, subject, sliders, length, tone, gradeBand } = currentInputs();
+  if (name && pronoun && subject) {
+    renderFeedback(generateFeedback(name, pronoun, subject, sliders, { length, tone, gradeBand }));
+  } else {
+    document.getElementById("feedbackOutput").classList.add("hidden");
+    document.getElementById("copyBtn").classList.add("hidden");
+    document.getElementById("regenerateBtn").classList.add("hidden");
+    document.getElementById("wordCount").classList.add("hidden");
+    document.getElementById("placeholderHint").classList.remove("hidden");
+  }
+}
+
+document.getElementById("feedbackForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  updateFeedback();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  document.getElementById("feedbackForm").reset();
+  document.getElementById("feedbackOutput").classList.add("hidden");
+  document.getElementById("copyBtn").classList.add("hidden");
+  document.getElementById("regenerateBtn").classList.add("hidden");
+  document.getElementById("wordCount").classList.add("hidden");
+  document.getElementById("placeholderHint").classList.remove("hidden");
+  sliderIds.forEach(id => {
+    const slider = document.getElementById(id);
+    document.getElementById(`${id}-value`).textContent = "6";
+    slider.value = "6";
+    setSliderFill(slider);
+    updateSliderTag(id);
+  });
+});
+
+document.getElementById("regenerateBtn").addEventListener("click", () => {
+  updateFeedback();
+});
+
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const output = document.getElementById("feedbackOutput");
+  const text = Array.from(output.querySelectorAll("p")).map(p => p.textContent).join("\n\n");
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("copyBtn");
+    const original = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+});
+
+sliderIds.forEach(id => updateSliderValue(id, `${id}-value`));
+
+document.getElementById("name").addEventListener("input", updateFeedback);
+document.getElementById("pronoun").addEventListener("change", updateFeedback);
+document.getElementById("subject").addEventListener("input", updateFeedback);
+document.getElementById("gradeBand").addEventListener("change", updateFeedback);
+document.getElementById("tone").addEventListener("change", updateFeedback);
+document.getElementById("length").addEventListener("change", updateFeedback);
+</script>
+</body>
+</html>
